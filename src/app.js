@@ -20,6 +20,13 @@ app.get('/', (req, res) => {
     })
 });
 
+app.post('/', (req, res) => {
+    return res.status(200).send({
+        error: false,
+        message: 'Post is also working !'
+    })
+})
+
 app.listen(port, () => {
     console.log('Server is Running on Port',port);
 });

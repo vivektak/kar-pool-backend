@@ -94,6 +94,13 @@ const login = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
+    console.log(req.body.email)
+    const isUserFind = await User.findOne({ email: req.body.email });
+    // if (isOtpFind.length === 0)
+    //     return res.status(400).send('Otp mismateched');
+    console.log(isUserFind);
+    res.send(isUserFind)
+
 
 }
 
