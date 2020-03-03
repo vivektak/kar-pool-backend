@@ -55,7 +55,7 @@ const signup = async (req, res) => {
     console.log('yo', otpSaved);
     if (result.error || otpSaved.error)
         return result.error ? result.error : otpSaved.error;
-
+    
     sendWelcomeMail(req.body.email, req.body.name, otp);
     res.send(me);
 };

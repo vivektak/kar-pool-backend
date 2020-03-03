@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+require('dotenv').config();
 
-const connectionURL = process.env.database? process.env.database : 'mongodb://127.0.0.1:27017/';
+console.log(process.env.DATABASE_URL);
+const connectionURL = process.env.DATABASE_URL;
 const database = 'car-pool';
 
 mongoose.connect(connectionURL+database, {useNewUrlParser : true, useCreateIndex : true});
