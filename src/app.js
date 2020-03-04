@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const userRoutes = require('./routes/user.routes');
-const { handleError, ErrorHandler } = require('./error');
+const { handleError, ErrorHandler } = require('./handler/error');
 
 const app = express();
 

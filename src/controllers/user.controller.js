@@ -5,7 +5,7 @@ const User = require('../models/Users.model');
 const OtpModel = require('../models/otp.model');
 const jwt = require('jsonwebtoken');
 const Joi =  require('@hapi/joi');
-const { handleError, ErrorHandler } = require('../error');
+const { handleError, ErrorHandler } = require('../handler/error');
 /**
  * @swagger
  *  components:
