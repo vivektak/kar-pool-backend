@@ -46,15 +46,13 @@ const signup = async (req, res) => {
         password: hashedPassword
     });
 
-
     const result = await me.save();
+    console.log(result);
     const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
     const otpObject = new OtpModel({ otp, userId: result._id });
     const otpSaved = await otpObject.save();
-    console.log('error', result);
-    console.log('yo', otpSaved);
     if (result.error || otpSaved.error)
-        return result.error ? result.error : otpSaved.error;
+        return res.send(result.error ? result.error : otpSaved.error);
     
     sendWelcomeMail(req.body.email, req.body.name, otp);
     res.send(me);
@@ -94,20 +92,38 @@ const login = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
-    console.log(req.body.email)
     const isUserFind = await User.findOne({ email: req.body.email });
-    // if (isOtpFind.length === 0)
-    //     return res.status(400).send('Otp mismateched');
-    console.log(isUserFind);
-    res.send(isUserFind)
+    if(!isUserFind)
+        return res.send('User is not Registered !!');
+        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
+        const otpSaved = await OtpModel.findOneAndUpdate({userId: isUserFind._id}, {otp}, {new : true, upsert : true});
+        if(otpSaved.error)
+            return res.send(otpSaved.error);
+        
+        sendWelcomeMail(req.body.email, isUserFind.name, otp);
+        res.send(isUserFind);
+};
+
+const resendOtp = async (req, res) => {
+    const isUserFind = await User.findOne({ email: req.body.email });
+    if(!isUserFind)
+        return res.send('User is not Registered !!');
+        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
+        const otpSaved = await OtpModel.findOneAndUpdate({userId: isUserFind._id}, {otp}, {new : true, upsert : true});
+        if(otpSaved.error)
+            return res.send(otpSaved.error);
+        
+        sendWelcomeMail(req.body.email, isUserFind.name, otp);
+        res.send(isUserFind);
+} 
 
 
-}
 
 
 module.exports = {
     signup,
     validateOtp,
     login,
-    resetPassword
+    resetPassword,
+    resendOtp
 }
