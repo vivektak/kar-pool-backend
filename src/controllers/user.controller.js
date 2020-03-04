@@ -1,11 +1,13 @@
 const {sendWelcomeMail} = require('../emails/account');
 const bcrypt = require('bcryptjs');
-var otpGenerator = require('otp-generator')
+//var otpGenerator = require('otp-generator')
+const { generateOtp} = require('../handler/otpGenerator');
 const User = require('../models/Users.model');
 const OtpModel = require('../models/otp.model');
 const jwt = require('jsonwebtoken');
 const Joi =  require('@hapi/joi');
 const { handleError, ErrorHandler } = require('../handler/error');
+const {passwordHandler} = require('../handler/passwordHandler');
 /**
  * @swagger
  *  components:
@@ -39,6 +41,7 @@ const signup = async (req, res, next) => {
         });
 
         const userResult = userSchema.validate(req.body);
+        console.log('userResult', userResult);
         if(userResult.error)
             throw new ErrorHandler(400, userResult.error.details[0].message);
         
@@ -49,8 +52,12 @@ const signup = async (req, res, next) => {
             password: hashedPassword
         });
 
+        const user = await User.findOne({ email: req.body.email });
+        if (user)
+            throw new ErrorHandler(400, 'User Already Exist')
+        
         const result = await me.save();
-        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
+        const otp = generateOtp();
         const otpObject = new OtpModel({ otp, userId: result._id });
         const otpSaved = await otpObject.save();
         if (result.error || otpSaved.error)
@@ -97,11 +104,9 @@ const login = async (req, res, next) => {
         const user = await User.findOne({ email: req.body.email });
         if (!user)
             throw new ErrorHandler(400, 'User Not Found')
-            //return res.status(400).send('User Not Found');
         const isMatch = await bcrypt.compare(req.body.password, user.password);
         if (!isMatch) {
             throw new ErrorHandler(401, "Password didn't matched")
-            //res.status(401).send("Password didn't matched");
         } else if (isMatch && user.active) {
             const token = jwt.sign({ _id: user._id }, 'jwttoken')
             res.send(token);
@@ -115,48 +120,46 @@ const login = async (req, res, next) => {
     
 };
 
-const resetPassword = async (req, res) => {
-    const isUserFind = await User.findOne({ email: req.body.email });
-    if(!isUserFind)
-        return res.send('User is not Registered !!');
-        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
-        const otpSaved = await OtpModel.findOneAndUpdate({userId: isUserFind._id}, {otp}, {new : true, upsert : true});
-        if(otpSaved.error)
-            return res.send(otpSaved.error);
-        
-        sendWelcomeMail(req.body.email, isUserFind.name, otp);
-        res.send(isUserFind);
+const resetPassword = async (req, res, next) => {
+    try{
+        const data = await passwordHandler(req.body.email);
+        res.send(data);
+    } catch(error){
+        next(error);
+    }
+    
 };
 
-const resendOtp = async (req, res) => {
-    const isUserFind = await User.findOne({ email: req.body.email });
-    if(!isUserFind)
-        return res.send('User is not Registered !!');
-        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
-        const otpSaved = await OtpModel.findOneAndUpdate({userId: isUserFind._id}, {otp}, {new : true, upsert : true});
-        if(otpSaved.error)
-            return res.send(otpSaved.error);
-        
-        sendWelcomeMail(req.body.email, isUserFind.name, otp);
-        res.send(isUserFind);
+const resendOtp = async (req, res, next) => {
+    try {
+        const data = await passwordHandler(req.body.email)
+        res.send(data);
+    } catch(error){
+        next(error);
+    }
+    
 };
 
-const changePassword = async (req, res) => {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user)
-        return res.status(400).send('User Not Found');
-    const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
-    if (!isMatch) 
-        return res.status(401).send("Password is Incorrect");
-    const NewHashedPassword = await bcrypt.hash(req.body.newPassword, 8)
-    user.password = NewHashedPassword;
-    const userSaved = await user.save();
-
-    if(userSaved.error)
-        return res.send('User is not saved');
-        
-    res.send('Password Updated')
-
+const changePassword = async (req, res, next) => {
+    try{
+        const user = await User.findOne({ email: req.body.email });
+        if (!user)
+            throw new ErrorHandler(400, 'User Not Found');
+        const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+        if (!isMatch) 
+            throw new ErrorHandler(400, "Password is Incorrect");
+        const NewHashedPassword = await bcrypt.hash(req.body.newPassword, 8)
+        user.password = NewHashedPassword;
+        const userSaved = await user.save();
+    
+        if(userSaved.error)
+            throw new ErrorHandler(400, 'User is not saved');
+        res.send('Password Updated')
+    
+    } catch(error){
+        next(error);
+    }
+    
 };
 
 

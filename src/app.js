@@ -16,8 +16,6 @@ const port = process.env.PORT
 
 app.get('/', (req, res) => {
     throw new ErrorHandler(500, 'Internal server error');
-    // const err = {code : 500,  message : 'Internal server error'}
-    // next(err);
 });
 
 app.post('/', (req, res) => {
@@ -29,8 +27,6 @@ app.post('/', (req, res) => {
 
 app.use((err, req, res, next) => {
     handleError(err,res);
-    // console.log(err);
-    // res.status(500).send('Something broke!');
 });
 
 app.listen(port, () => {
