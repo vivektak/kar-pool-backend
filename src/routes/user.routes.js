@@ -13,6 +13,8 @@ router.post('/reset-password', userController.resetPassword);
 
 router.post('/resend-otp', userController.resendOtp);
 
+router.post('/change-password', userController.changePassword);
+
 
 
 module.exports = router;

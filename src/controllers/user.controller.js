@@ -5,7 +5,7 @@ const User = require('../models/Users.model');
 const OtpModel = require('../models/otp.model');
 const jwt = require('jsonwebtoken');
 const Joi =  require('@hapi/joi');
-
+const { handleError, ErrorHandler } = require('../error');
 /**
  * @swagger
  *  components:
@@ -28,67 +28,91 @@ const Joi =  require('@hapi/joi');
  */
 
 
-const signup = async (req, res) => {
-    const userSchema = Joi.object({
-        name: Joi.string().required(),
-        email: Joi.string().required(),
-        password: Joi.string().required()
-    });
-
-    const userResult = userSchema.validate(req.body);
-    if(userResult.error)
-        return res.status(400).send(userResult.error);
-
-    const hashedPassword = await bcrypt.hash(req.body.password, 8)
-    const me = new User({
-        name: req.body.name,
-        email: req.body.email,
-        password: hashedPassword
-    });
-
-    const result = await me.save();
-    console.log(result);
-    const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
-    const otpObject = new OtpModel({ otp, userId: result._id });
-    const otpSaved = await otpObject.save();
-    if (result.error || otpSaved.error)
-        return res.send(result.error ? result.error : otpSaved.error);
+const signup = async (req, res, next) => {
     
-    sendWelcomeMail(req.body.email, req.body.name, otp);
-    res.send(me);
+
+    try{
+        const userSchema = Joi.object({
+            name: Joi.string().required(),
+            email: Joi.string().email().required(),
+            password: Joi.string().required()
+        });
+
+        const userResult = userSchema.validate(req.body);
+        if(userResult.error)
+            throw new ErrorHandler(400, userResult.error.details[0].message);
+        
+        const hashedPassword = await bcrypt.hash(req.body.password, 8)
+        const me = new User({
+            name: req.body.name,
+            email: req.body.email,
+            password: hashedPassword
+        });
+
+        const result = await me.save();
+        const otp = otpGenerator.generate(6, { upperCase: false, specialChars: false, digits: true, alphabets: false });
+        const otpObject = new OtpModel({ otp, userId: result._id });
+        const otpSaved = await otpObject.save();
+        if (result.error || otpSaved.error)
+            throw new ErrorHandler(400, result.error ? result.error : otpSaved.error);
+        
+        sendWelcomeMail(req.body.email, req.body.name, otp);
+        res.send(me);
+
+    } catch (error){
+        next(error);
+    }
 };
 
-const validateOtp = async (req, res) => {
-    const otpSchema = Joi.object({
-        otp: Joi.number().required(),
-    });
+const validateOtp = async (req, res, next) => {
+    
 
-    const otpResult = otpSchema.validate(req.body);
-    if (otpResult.error) {
-        return res.status(400).send(otpResult.error);
+    try{
+        const otpSchema = Joi.object({
+            otp: Joi.number().required(),
+        });
+
+        const otpResult = otpSchema.validate(req.body);
+        if (otpResult.error) {
+            throw new ErrorHandler(400, otpResult.error);
+        }
+
+        const isOtpFind = await OtpModel.findOne({ otp: req.body.otp });
+        if (isOtpFind.length === 0)
+            throw new ErrorHandler(400, 'Otp mismateched');
+    
+        const findOneAndUpdate = await User.findByIdAndUpdate(isOtpFind.userId, { active: true });
+        res.send(findOneAndUpdate);
+
+    } catch(error){
+        next(error)
     }
-
-    const isOtpFind = await OtpModel.findOne({ otp: req.body.otp });
-    if (isOtpFind.length === 0)
-        return res.status(400).send('Otp mismateched');
-
-    const findOneAndUpdate = await User.findByIdAndUpdate(isOtpFind.userId, { active: true });
-    res.send(findOneAndUpdate);
+    
+    
+   
 };
 
-const login = async (req, res) => {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user)
-        return res.status(400).send('User Not Found');
-    const isMatch = await bcrypt.compare(req.body.password, user.password);
-    if (!isMatch) {
-        res.status(401).send("Password didn't matched");
-    } else if (isMatch && user.active) {
-        const token = jwt.sign({ _id: user._id }, 'jwttoken')
-        res.send(token);
-    } else {
-        res.status(402).send('User is not Activated');
+const login = async (req, res, next) => {
+    try{
+        const user = await User.findOne({ email: req.body.email });
+        if (!user)
+            throw new ErrorHandler(400, 'User Not Found')
+            //return res.status(400).send('User Not Found');
+        const isMatch = await bcrypt.compare(req.body.password, user.password);
+        if (!isMatch) {
+            throw new ErrorHandler(401, "Password didn't matched")
+            //res.status(401).send("Password didn't matched");
+        } else if (isMatch && user.active) {
+            const token = jwt.sign({ _id: user._id }, 'jwttoken')
+            res.send(token);
+        } else {
+            throw new ErrorHandler(402, 'User is not Activated')
+            
+        }
+    }catch(error){
+        next(error);
     }
+    
 };
 
 const resetPassword = async (req, res) => {
@@ -115,9 +139,25 @@ const resendOtp = async (req, res) => {
         
         sendWelcomeMail(req.body.email, isUserFind.name, otp);
         res.send(isUserFind);
-} 
+};
 
+const changePassword = async (req, res) => {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user)
+        return res.status(400).send('User Not Found');
+    const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+    if (!isMatch) 
+        return res.status(401).send("Password is Incorrect");
+    const NewHashedPassword = await bcrypt.hash(req.body.newPassword, 8)
+    user.password = NewHashedPassword;
+    const userSaved = await user.save();
 
+    if(userSaved.error)
+        return res.send('User is not saved');
+        
+    res.send('Password Updated')
+
+};
 
 
 module.exports = {
@@ -125,5 +165,6 @@ module.exports = {
     validateOtp,
     login,
     resetPassword,
-    resendOtp
+    resendOtp,
+    changePassword
 }
