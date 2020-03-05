@@ -13,9 +13,14 @@ const User = mongoose.model('Users', {
         type : String,
         required : true
     },
+    mobile : {
+        type : Number
+    },
     active : {
-        type : Boolean,
-        default: false
+        type : Boolean
+    },
+    image : {
+        type : Buffer
     }
 });
 
