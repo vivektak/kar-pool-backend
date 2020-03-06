@@ -22,9 +22,9 @@ const User = mongoose.model('Users', {
     image : {
         type : String
     },
-    views : {
-        type :Number,
-        default : 0
+    token : {
+        type :String,
+        required : true
     }
 });
 

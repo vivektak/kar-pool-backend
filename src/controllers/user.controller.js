@@ -93,7 +93,11 @@ const login = async (req, res, next) => {
             throw new ErrorHandler(401, "Password didn't matched")
         } else if (isMatch && user.active) {
             const token = jwt.sign({ _id: user._id }, 'jwttoken')
-            res.send(token);
+            user.token = token;
+            const tokenSaved = await user.save;
+            if(tokenSaved.error)
+                throw new ErrorHandler(400, 'Error in Storing Token');
+            res.send(user);
         } else {
             throw new ErrorHandler(402, 'User is not Activated')
         }
@@ -227,7 +231,19 @@ const getProfilePicture = async (req, res, next) => {
     }catch(error){
         next(error);
     }
-}
+};
+
+
+const logout = async (req,res,next) => {
+    try{
+        const user = await User.findOneAndUpdate(req.body.token,{token : ''})
+        if(user.error)
+            throw new ErrorHandler(400, 'User not found');
+        res.send(user);
+    }catch(error){
+        next(error);
+    }
+};
 
 const userModule = {
     signup,
@@ -238,7 +254,8 @@ const userModule = {
     changePassword,
     updateProfile,
     updateProfilePicture,
-    getProfilePicture
+    getProfilePicture,
+    logout
 }
 
 module.exports = userModule;

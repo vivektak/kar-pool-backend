@@ -22,6 +22,8 @@ router.post('/validateOtp',userController.validateOtp);
 
 router.post('/login', userController.login);
 
+router.get('/logout', userController.logout);
+
 router.post('/reset-password', userController.resetPassword);
 
 router.post('/resend-otp', userController.resendOtp);
