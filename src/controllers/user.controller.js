@@ -202,7 +202,16 @@ const updateProfile = async (req, res, next) => {
 
 const updateProfilePicture = async(req, res, next) => {
     try{
-        res.send('Profile uploaded Successfully');
+        const user = await User.findOne({ email: req.body.email });
+        if (!user)
+            throw new ErrorHandler(400, 'User Not Found');
+            console.log(req.file);
+        user.image = req.file.filename;
+
+        const imageSaved = await user.save();
+        if (imageSaved.error)
+            throw new ErrorHandler(400, 'User is not saved');
+        res.send({ "status": 200, "Message": 'Image Updated Successfully' });
     }catch(error){
         next(error);
     }
@@ -210,16 +219,17 @@ const updateProfilePicture = async(req, res, next) => {
 
 const getProfilePicture = async (req, res, next) => {
     try{
-        console.log(path.join(__dirname, '../../uploads/edbe02e9599df29613a8c3b09c05a69f.png'));
-        res.send(path.join(__dirname, '../../uploads/edbe02e9599df29613a8c3b09c05a69f.jpg'))
+        const user = await User.findOne({ email: req.body.email });
+        if (!user)
+            throw new ErrorHandler(400, 'User Not Found');
+        
+        res.send(path.join('http://localhost:3000', '/images/' + user.image));
     }catch(error){
         next(error);
     }
 }
 
-
-
-module.exports = {
+const userModule = {
     signup,
     validateOtp,
     login,
@@ -230,3 +240,5 @@ module.exports = {
     updateProfilePicture,
     getProfilePicture
 }
+
+module.exports = userModule;

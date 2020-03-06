@@ -20,7 +20,11 @@ const User = mongoose.model('Users', {
         type : Boolean
     },
     image : {
-        type : Buffer
+        type : String
+    },
+    views : {
+        type :Number,
+        default : 0
     }
 });
 
